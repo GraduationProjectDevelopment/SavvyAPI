@@ -28,3 +28,8 @@ class ITransactionRepository(ABC):
     @abstractmethod
     def delete_transaction(self, transaction_id: UUID) -> bool:
         pass
+
+    @abstractmethod
+    def get_transactions_by_category_id(self, category_id: UUID) -> List[Transaction]:
+        pass
+    

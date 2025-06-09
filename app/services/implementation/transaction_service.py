@@ -63,3 +63,8 @@ class TransactionService(ITransactionService):
 
     def delete_transaction(self, transaction_id: UUID) -> bool:
         return self.transaction_repository.delete_transaction(transaction_id)
+    
+    def get_transactions_by_category_id(self, category_id: UUID) -> List[TransactionResponse]:
+        txs = self.transaction_repository.get_transactions_by_category_id(category_id)
+        return [TransactionResponse(**tx.__dict__) for tx in txs]
+    

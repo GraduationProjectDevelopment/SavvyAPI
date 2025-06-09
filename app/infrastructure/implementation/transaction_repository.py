@@ -79,3 +79,15 @@ class TransactionRepository(ITransactionRepository):
             .execute()
         )
         return bool(response.data)
+    
+    
+    def get_transactions_by_category_id(self, category_id: UUID) -> List[Transaction]:
+        response = (
+            supabase.table("transactions")
+            .select("*")
+            .eq("category_id", str(category_id))
+            .execute()
+        )
+        return (
+            [Transaction(**record) for record in response.data] if response.data else []
+        )
