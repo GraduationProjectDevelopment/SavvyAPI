@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 from enum import Enum
 
@@ -15,9 +16,9 @@ class Transaction:
         user_id: UUID,
         category_id: UUID,
         description: str,
-        created_at: datetime,
         amount: float,
         transaction_type: TransactionType,
+        created_at: Optional[datetime] = None  
     ):
         self.transaction_id = transaction_id
         self.user_id = user_id
