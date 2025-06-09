@@ -69,7 +69,8 @@ class BudgetRepository(IBudgetRepository):
 
     def get_budget_by_category_id(self, category_id: UUID) -> List[Budget]:
         response = (
-            get_supabase().table("budgets")
+            get_supabase()
+            .table("budgets")
             .select("*")
             .eq("category_id", str(category_id))
             .execute()
