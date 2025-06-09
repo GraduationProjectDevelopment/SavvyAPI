@@ -60,6 +60,7 @@ def delete_transaction(transaction_id: UUID):
     if not success:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+
 @router.get("/category/{category_id}", response_model=List[TransactionResponse])
 def get_by_category(category_id: UUID):
     return transaction_service.get_transactions_by_category_id(category_id)
