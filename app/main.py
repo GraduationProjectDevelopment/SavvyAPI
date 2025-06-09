@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
-from app.api.v1 import user, chat, transactions
+from app.api.v1 import user, chat, transactions, budget
 
 load_dotenv()
 
@@ -21,3 +21,5 @@ app.include_router(chat.router, prefix=api_v1_prefix + "/chat", tags=["Chat"])
 app.include_router(
     transactions.router, prefix=api_v1_prefix + "/transactions", tags=["Transactions"]
 )
+
+app.include_router(budget.router, prefix=api_v1_prefix + "/budgets", tags=["Budgets"])
