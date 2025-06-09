@@ -5,9 +5,7 @@ from app.core.supabase import create_client, get_supabase
 from uuid import UUID
 import os
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 
 class TransactionRepository(ITransactionRepository):
@@ -28,7 +26,7 @@ class TransactionRepository(ITransactionRepository):
 
     def get_transaction_by_id(self, transaction_id: UUID) -> Optional[Transaction]:
         response = (
-            supabase.table("transactions")
+            get_supabase().table("transactions")
             .select("*")
             .eq("transaction_id", str(transaction_id))
             .single()
@@ -40,7 +38,7 @@ class TransactionRepository(ITransactionRepository):
 
     def get_transactions_by_user_id(self, user_id: UUID) -> List[Transaction]:
         response = (
-            supabase.table("transactions")
+            get_supabase().table("transactions")
             .select("*")
             .eq("user_id", str(user_id))
             .execute()
@@ -50,14 +48,14 @@ class TransactionRepository(ITransactionRepository):
         )
 
     def get_all_transactions(self) -> List[Transaction]:
-        response = supabase.table("transactions").select("*").execute()
+        response = get_supabase().table("transactions").select("*").execute()
         return (
             [Transaction(**record) for record in response.data] if response.data else []
         )
 
     def update_transaction(self, transaction: Transaction) -> Optional[Transaction]:
         response = (
-            supabase.table("transactions")
+            get_supabase().table("transactions")
             .update(
                 {
                     "category_id": str(transaction.category_id),
@@ -73,7 +71,7 @@ class TransactionRepository(ITransactionRepository):
 
     def delete_transaction(self, transaction_id: UUID) -> bool:
         response = (
-            supabase.table("transactions")
+            get_supabase().table("transactions")
             .delete()
             .eq("transaction_id", str(transaction_id))
             .execute()
@@ -83,7 +81,7 @@ class TransactionRepository(ITransactionRepository):
     
     def get_transactions_by_category_id(self, category_id: UUID) -> List[Transaction]:
         response = (
-            supabase.table("transactions")
+            get_supabase().table("transactions")
             .select("*")
             .eq("category_id", str(category_id))
             .execute()
