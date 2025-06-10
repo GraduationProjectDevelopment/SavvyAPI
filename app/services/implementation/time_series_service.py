@@ -8,4 +8,4 @@ class TimeSeriesService(ITimeSeriesService):
         self.repo = repo
 
     def get_next_month_prediction(self, user_id: str) -> TimeSeriesPredictionResponse:
-        return self.repo.get_next_month_prediction
+        return self.repo.get_next_month_prediction(user_id)

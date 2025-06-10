@@ -113,7 +113,7 @@ class UserRepository(IUserRepository):
         except Exception as e:
             print(f"Upload failed: {e}")
             return None
-        
+
     def get_all_users(self) -> List[User]:
         result = get_supabase().table("users").select("*").execute()
         users = result.data or []
@@ -130,3 +130,17 @@ class UserRepository(IUserRepository):
             for user in users
         ]
 
+    def login(self, email: str, password: str) -> Optional[dict]:
+        try:
+            result = get_supabase().auth.sign_in_with_password(
+                {"email": email, "password": password}
+            )
+            if result.session:
+                return {
+                    "access_token": result.session.access_token,
+                    "refresh_token": result.session.refresh_token,
+                }
+            return None
+        except Exception as e:
+            print(f"Login error: {e}")
+            return None

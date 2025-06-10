@@ -24,9 +24,9 @@ class UserService(IUserService):
 
     def upload_avatar(self, user_id: UUID, file: UploadFile) -> Optional[str]:
         return self.repo.upload_avatar(user_id, file)
-    
+
     def get_all_users(self) -> List[User]:
         return self.repo.get_all_users()
 
-    
-
+    def login(self, email: str, password: str) -> Optional[dict]:
+        return self.repo.login(email, password)

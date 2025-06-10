@@ -4,6 +4,7 @@ from datetime import date
 from uuid import UUID
 
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     full_name: str
@@ -33,3 +34,13 @@ class UserUpdate(BaseModel):
 class DeleteAccountRequest(BaseModel):
     user_id: str
     password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class LoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"

@@ -22,17 +22,16 @@ class TimeSeriesRepository(ITimeSeriesRepository):
         self.load_ml_models()
 
     def load_ml_models(self):
-        base_path = os.path.join(os.path.dirname(__file__), "../../../core/TimeSeries")
-        model_path = os.path.abspath(os.path.join(base_path, "lstm.h5"))
-        scaler_path = os.path.abspath(os.path.join(base_path, "scaler.save"))
-
         try:
-            self.model = load_model(model_path)
-            self.scaler = joblib.load(scaler_path)
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Model loading failed: {str(e)}"
+            base = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), "..", "..", "core", "TimeSeries"
+                )
             )
+            self.model = load_model(os.path.join(base, "lstm.h5"))
+            self.scaler = joblib.load(os.path.join(base, "scaler.save"))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Model loading failed: {e}")
 
     def get_next_month_prediction(self, user_id: str) -> TimeSeriesPredictionResponse:
         df = self._fetch_data(user_id)
@@ -40,18 +39,18 @@ class TimeSeriesRepository(ITimeSeriesRepository):
             pd.to_datetime(df["created_at"]).dt.to_period("M").dt.to_timestamp()
         )
 
-        category_map = (
+        cat_map = (
             self.supabase.from_("categories")
             .select("category_id, category_name")
             .execute()
             .data
         )
-        cat_df = pd.DataFrame(category_map)
+        cat_df = pd.DataFrame(cat_map)
         df = df.merge(cat_df, on="category_id", how="left").dropna(
             subset=["category_name"]
         )
 
-        monthly_expenses = (
+        grouped = (
             df.groupby(["created_at", "category_name"])["amount"]
             .sum()
             .unstack(fill_value=0)
@@ -66,55 +65,43 @@ class TimeSeriesRepository(ITimeSeriesRepository):
             "Transportation",
             "Health",
         ]
-        X = pd.DataFrame(index=monthly_expenses.index)
+        X = pd.DataFrame(index=grouped.index)
         for col in expected:
-            X[col] = monthly_expenses.get(col, 0)
+            X[col] = grouped.get(col, 0)
         X["Expenses"] = X[expected].sum(axis=1)
 
-        # Drop current month if not complete
         today = pd.Timestamp(datetime.today().date())
         if X.index[-1].month == today.month:
-            X = X[:-1]
-
+            X = X.iloc[:-1]
         if len(X) < 3:
             raise HTTPException(
                 status_code=400, detail="Need at least 3 months of data"
             )
 
-        last_3 = X.tail(3)
-        scaled = self.scaler.transform(last_3[expected])
-        input_data = np.expand_dims(scaled, axis=0)
-        pred = float(self.model.predict(input_data)[0, 0])
+        last3 = X.tail(3)
+        scaled = self.scaler.transform(last3[expected])
+        pred = float(self.model.predict(np.expand_dims(scaled, axis=0))[0, 0])
 
-        next_month = (last_3.index.max() + pd.offsets.MonthBegin(1)).strftime(
-            "%Y-%m-%d"
-        )
-        next_month_label = (last_3.index.max() + pd.offsets.MonthBegin(1)).strftime(
-            "%Y-%m"
-        )
-
-        history = []
-        for _, row in last_3.iterrows():
-            history.append(
-                MonthlyExpense(
-                    month=row.name.strftime("%Y-%m"),
-                    total_expense=float(row["Expenses"]),
-                    breakdown=ExpenseBreakdown(
-                        **{col: float(row[col]) for col in expected}
-                    ),
-                )
+        next_month_ts = last3.index.max() + pd.offsets.MonthBegin(1)
+        history = [
+            MonthlyExpense(
+                month=row.name.strftime("%Y-%m"),
+                total_expense=float(row["Expenses"]),
+                breakdown=ExpenseBreakdown(**{c: float(row[c]) for c in expected}),
             )
+            for _, row in last3.iterrows()
+        ]
 
         return TimeSeriesPredictionResponse(
             user_id=user_id,
-            date=next_month,
-            month=next_month_label,
+            date=next_month_ts.strftime("%Y-%m-01"),
+            month=next_month_ts.strftime("%Y-%m"),
             predicted_total_expense=round(pred, 2),
             history=history,
         )
 
-    def _fetch_data(self, user_id: str):
-        response = (
+    def _fetch_data(self, user_id: str) -> pd.DataFrame:
+        resp = (
             self.supabase.from_("transactions")
             .select("category_id, amount, created_at")
             .eq("user_id", user_id)
@@ -122,6 +109,6 @@ class TimeSeriesRepository(ITimeSeriesRepository):
             .order("created_at")
             .execute()
         )
-        if not response.data:
+        if not resp.data:
             raise HTTPException(status_code=404, detail="No expense data")
-        return pd.DataFrame(response.data)
+        return pd.DataFrame(resp.data)

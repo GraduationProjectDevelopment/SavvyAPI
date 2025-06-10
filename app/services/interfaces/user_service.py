@@ -3,6 +3,7 @@ from uuid import UUID
 from app.domain.user import User
 from typing import List, Optional
 from fastapi import UploadFile
+from app.models.user_dto import LoginRequest, LoginResponse
 
 
 class IUserService(ABC):
@@ -28,4 +29,12 @@ class IUserService(ABC):
 
     @abstractmethod
     def get_all_users(self) -> List[User]:
+        pass
+
+    @abstractmethod
+    def login(self, credentials: LoginRequest) -> LoginResponse:
+        pass
+
+    @abstractmethod
+    def login(self, email: str, password: str) -> Optional[dict]:
         pass

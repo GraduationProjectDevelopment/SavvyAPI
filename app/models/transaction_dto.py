@@ -16,9 +16,9 @@ class CreateTransactionRequest(BaseModel):
 
 
 class TransactionResponse(BaseModel):
-    transaction_id: str
-    user_id: str
-    category_id: str
+    transaction_id: UUID
+    user_id: UUID
+    category_id: UUID
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     amount: float
