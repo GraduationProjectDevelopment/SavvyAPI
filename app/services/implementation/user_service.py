@@ -1,7 +1,7 @@
 from app.infrastructure.interfaces.user_repository import IUserRepository
 from app.services.interfaces.user_service import IUserService
 from app.domain.user import User
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID, uuid4
 from fastapi import UploadFile
 
@@ -24,3 +24,9 @@ class UserService(IUserService):
 
     def upload_avatar(self, user_id: UUID, file: UploadFile) -> Optional[str]:
         return self.repo.upload_avatar(user_id, file)
+    
+    def get_all_users(self) -> List[User]:
+        return self.repo.get_all_users()
+
+    
+

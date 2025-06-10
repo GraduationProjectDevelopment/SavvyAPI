@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from app.models.user_dto import UserCreate, UserOut, UserUpdate
 from app.services.implementation.user_service import UserService
@@ -101,3 +102,9 @@ def delete_user(user_id: UUID):
     if not success:
         raise HTTPException(status_code=404, detail="Delete failed")
     return {"message": "User deleted successfully"}
+
+
+@router.get("/", response_model=List[UserOut], summary="Get all users")
+def get_all_users():
+    users = user_service.get_all_users()
+    return [UserOut(**user.__dict__) for user in users]
