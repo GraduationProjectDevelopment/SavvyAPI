@@ -8,8 +8,7 @@ from app.services.interfaces.goal_service import IGoalService
 
 
 router = APIRouter()
-goal_service : IGoalService = GoalService(GoalRepository())
-
+goal_service: IGoalService = GoalService(GoalRepository())
 
 
 @router.post("/", response_model=GoalResponse)

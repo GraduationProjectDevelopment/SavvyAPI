@@ -21,7 +21,7 @@ class MonthlyExpense(BaseModel):
 
 class TimeSeriesPredictionResponse(BaseModel):
     user_id: str
-    date: str           # next prediction date "2025-07-01"
-    month: str          # month label "2025-07"
+    date: str  # next prediction date "2025-07-01"
+    month: str  # month label "2025-07"
     predicted_total_expense: float
     history: List[MonthlyExpense]

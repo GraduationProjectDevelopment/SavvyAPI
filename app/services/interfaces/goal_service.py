@@ -18,7 +18,9 @@ class IGoalService(ABC):
         pass
 
     @abstractmethod
-    def update_goal(self, goal_id: UUID, data: UpdateGoalRequest) -> Optional[GoalResponse]:
+    def update_goal(
+        self, goal_id: UUID, data: UpdateGoalRequest
+    ) -> Optional[GoalResponse]:
         pass
 
     @abstractmethod

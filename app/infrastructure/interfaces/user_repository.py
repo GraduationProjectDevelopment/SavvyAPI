@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from app.domain.user import User
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 from fastapi import UploadFile
 
@@ -25,3 +25,10 @@ class IUserRepository(ABC):
     @abstractmethod
     def upload_avatar(self, user_id: UUID, file: UploadFile) -> Optional[str]:
         pass
+    
+    @abstractmethod
+    def get_all_users(self) -> List[User]:
+        pass
+
+
+

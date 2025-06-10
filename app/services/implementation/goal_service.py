@@ -28,9 +28,14 @@ class GoalService(IGoalService):
         return GoalResponse(**vars(goal)) if goal else None
 
     def get_user_goals(self, user_id: UUID) -> List[GoalResponse]:
-        return [GoalResponse(**vars(g)) for g in self.goal_repository.get_goals_by_user(user_id)]
+        return [
+            GoalResponse(**vars(g))
+            for g in self.goal_repository.get_goals_by_user(user_id)
+        ]
 
-    def update_goal(self, goal_id: UUID, data: UpdateGoalRequest) -> Optional[GoalResponse]:
+    def update_goal(
+        self, goal_id: UUID, data: UpdateGoalRequest
+    ) -> Optional[GoalResponse]:
         update_data = {k: v for k, v in data.dict().items() if v is not None}
         goal = self.goal_repository.update_goal(goal_id, update_data)
         return GoalResponse(**vars(goal)) if goal else None

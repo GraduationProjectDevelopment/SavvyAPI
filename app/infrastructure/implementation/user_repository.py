@@ -2,7 +2,7 @@ from app.infrastructure.interfaces.user_repository import IUserRepository
 from app.domain.user import User
 from app.core.supabase import get_supabase
 from uuid import UUID
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from uuid import uuid4
 from fastapi import UploadFile
@@ -113,3 +113,20 @@ class UserRepository(IUserRepository):
         except Exception as e:
             print(f"Upload failed: {e}")
             return None
+        
+    def get_all_users(self) -> List[User]:
+        result = get_supabase().table("users").select("*").execute()
+        users = result.data or []
+        return [
+            User(
+                user_id=UUID(user["user_id"]),
+                email=user["email"],
+                full_name=user["full_name"],
+                phonenumber=user.get("phonenumber"),
+                data_of_birth=user.get("data_of_birth"),
+                avatar_url=user.get("avatar_url"),
+                password=user.get("password"),  # Optional: Include if needed
+            )
+            for user in users
+        ]
+
