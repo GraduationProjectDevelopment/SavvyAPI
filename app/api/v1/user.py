@@ -1,6 +1,12 @@
 from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
-from app.models.user_dto import UserCreate, UserOut, UserUpdate
+from app.models.user_dto import (
+    UserCreate,
+    UserOut,
+    UserUpdate,
+    LoginRequest,
+    LoginResponse,
+)
 from app.services.implementation.user_service import UserService
 from app.services.interfaces.user_service import IUserService
 from app.infrastructure.implementation.user_repository import UserRepository
@@ -108,3 +114,14 @@ def delete_user(user_id: UUID):
 def get_all_users():
     users = user_service.get_all_users()
     return [UserOut(**user.__dict__) for user in users]
+
+
+@router.post("/login", response_model=LoginResponse)
+def login(request: LoginRequest):
+    result = user_service.login(request.email, request.password)
+    if not result:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return LoginResponse(
+        access_token=result["access_token"], refresh_token=result["refresh_token"]
+    )

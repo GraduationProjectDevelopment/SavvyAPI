@@ -25,10 +25,11 @@ class IUserRepository(ABC):
     @abstractmethod
     def upload_avatar(self, user_id: UUID, file: UploadFile) -> Optional[str]:
         pass
-    
+
     @abstractmethod
     def get_all_users(self) -> List[User]:
         pass
 
-
-
+    @abstractmethod
+    def login(self, email: str, password: str) -> Optional[dict]:
+        pass

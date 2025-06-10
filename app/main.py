@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
-from app.api.v1 import user, chat, transactions, budget, goal
+from app.api.v1 import user, chat, transactions, budget, goal ,time_series
 
 load_dotenv()
 
@@ -24,6 +24,6 @@ app.include_router(
 
 app.include_router(budget.router, prefix=api_v1_prefix + "/budgets", tags=["Budgets"])
 
-# app.include_router(time_series.router, prefix="/forecast", tags=["Forecasting"])
+app.include_router(time_series.router, prefix="/forecast", tags=["Forecasting"])
 
 app.include_router(goal.router, prefix=api_v1_prefix + "/goals", tags=["Goals"])
