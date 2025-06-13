@@ -33,7 +33,9 @@ llm = Fireworks(
     api_key=api_key,
     model="accounts/fireworks/models/deepseek-v3",
     temperature=1.0,
-    max_tokens=1024,
+    max_tokens=512,     
+    top_p=0.9,
+    frequency_penalty=0.5
 )
 embeddings = FireworksEmbeddings(api_key=api_key)
 
