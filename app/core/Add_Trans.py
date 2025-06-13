@@ -10,7 +10,6 @@ import os
 import re
 from dotenv import load_dotenv
 from langchain_fireworks import Fireworks
-from langchain.memory import ConversationBufferMemory
 from datetime import datetime, timezone
 from dateparser import parse as date_parse
 from supabase import create_client, Client
@@ -22,17 +21,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # 3. LLM & DB Initialization
-llm = Fireworks(
-    api_key=API_KEY,
-    model="accounts/fireworks/models/deepseek-v3",
-    temperature=1.0,
-    max_tokens=1024,
-)
+llm = Fireworks(api_key=API_KEY, model="accounts/fireworks/models/deepseek-v3", temperature=1.0, max_tokens=1024)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
 # 4. Prompt for Transaction Extraction
-
 
 def process_transaction_with_llm(text):
     transaction_prompt = """
@@ -61,7 +53,7 @@ def process_transaction_with_llm(text):
     Make it sound natural and varied.]
 
     Example:
-    Input: "I got today 2,000 EGP from upwork"
+    Input: "I got today 2,000 from upwork"
     CREATED_AT: 2024-01-30T00:00:00Z
     AMOUNT: 2000
     TYPE: Income
@@ -69,7 +61,7 @@ def process_transaction_with_llm(text):
     DESCRIPTION: upwork
     FEEDBACK: That’s wonderful—congrats on your Freelance job!
 
-    Input: "Bought lunch for 50 EGP yesterday"
+    Input: "Bought lunch for 50 yesterday"
     CREATED_AT: 2024-01-29T00:00:00Z
     AMOUNT: 50
     TYPE: Expense
@@ -78,32 +70,34 @@ def process_transaction_with_llm(text):
     FEEDBACK: That's a reasonable amount for lunch! If you're looking to save more, you might consider bringing lunch from home occasionally.
     """
 
-    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S+00")
+    current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S+00')
     formatted_prompt = transaction_prompt.format(
-        input_text=text, current_date=current_date
+        input_text=text,
+        current_date=current_date
     )
     # Call LLM
     response = llm.invoke(formatted_prompt)
     return response
 
-
 # 5. LLM Output Parser
-
 
 def parse_llm_response(response):
     """Parse the LLM's output to get transaction fields."""
     # Extract CREATED_AT (or fallback to now)
+    now = datetime.now(timezone.utc)
     date_match = re.search(r"CREATED_AT:\s*([^\n]+)", response)
     date_str = date_match.group(1).strip() if date_match else None
     if not date_str or date_str.lower().startswith("unknown"):
-        date_obj = datetime.now(timezone.utc)
+        date_obj = now
     else:
         date_obj = date_parse(date_str)
         if not date_obj:
-            date_obj = datetime.now(timezone.utc)
+            date_obj = now
         elif date_obj.tzinfo is None:
             date_obj = date_obj.replace(tzinfo=timezone.utc)
-    created_at = date_obj.strftime("%Y-%m-%d %H:%M:%S+00")
+        if date_obj > now:
+            return {"error": "❌ Cannot add transaction: date is in the future."}
+    created_at = date_obj.strftime('%Y-%m-%d %H:%M:%S+00')
 
     # Extract AMOUNT
     amount_match = re.search(r"AMOUNT:\s*([\d.]+)", response, re.IGNORECASE)
@@ -111,23 +105,15 @@ def parse_llm_response(response):
 
     # Extract TYPE
     type_match = re.search(r"TYPE:\s*([^\n]+)", response, re.IGNORECASE)
-    transaction_type = type_match.group(1).strip().capitalize() if type_match else None
+    transaction_type = type_match.group(1).strip().rstrip(",. ").capitalize() if type_match else None
 
     # Extract CATEGORY
     category_match = re.search(r"CATEGORY:\s*([^\n]+)", response)
-    category = (
-        category_match.group(1).strip()
-        if category_match and category_match.group(1).strip()
-        else None
-    )
+    category = category_match.group(1).strip() if category_match and category_match.group(1).strip() else None
 
     # Extract DESCRIPTION
     desc_match = re.search(r"DESCRIPTION:\s*([^\n]+)", response, re.IGNORECASE)
-    description = (
-        desc_match.group(1).strip()
-        if desc_match and desc_match.group(1).strip()
-        else None
-    )
+    description = desc_match.group(1).strip() if desc_match and desc_match.group(1).strip() else None
 
     # Extract FEEDBACK
     feedback_match = re.search(r"FEEDBACK:\s*([^\n]+)", response)
@@ -139,43 +125,45 @@ def parse_llm_response(response):
         "transaction_type": transaction_type,
         "category": category,
         "description": description,
-        "feedback": feedback,
+        "feedback": feedback
     }
-
 
 # 6. Category ID Lookup
 
-UNCATEGORIZED_UUID = "YOUR_UNCATEGORIZED_CATEGORY_UUID"  # Replace with your real UUID!
+UNCATEGORIZED_UUID = "b179e1a0-9215-4914-b5b1-7851452bc1be"
 
-
-def get_category_id(category_name: str):
-    """Lookup category_id from name. If not found, returns Uncategorized UUID (see migration comment!)."""
+def get_category_id(category_name: str, supabase):
+    """Lookup category_id from name. If not found, returns Uncategorized UUID."""
     if not category_name or category_name.lower() == "uncategorized":
         return UNCATEGORIZED_UUID
-    cat_response = (
-        supabase.table("categories")
-        .select("category_id")
-        .eq("category_name", category_name)
-        .execute()
-    )
+    cat_response = supabase.table("categories").select("category_id").eq("category_name", category_name).execute()
     cat_data = cat_response.data
     if cat_data:
         return cat_data[0]["category_id"]
     else:
         return UNCATEGORIZED_UUID
 
-
 # 7. Insert transaction into DB
 
-
 def add_transaction_from_llm(llm_response, user_id, supabase):
+    if not llm_response or (isinstance(llm_response, str) and "error" in llm_response.lower()):
+        return "❌ Sorry, there was a problem extracting data from your input. Please try rephrasing."
     extracted = parse_llm_response(llm_response)
     description_valid = extracted["description"] not in (None, "", "No Description")
     amount_valid = extracted["amount"] > 0
     type_valid = extracted["transaction_type"] in ("Income", "Expense")
 
-    if not description_valid or not amount_valid or not type_valid:
-        return "❌ Cannot add transaction: missing information."
+    missing_fields = []
+    if not description_valid:
+        missing_fields.append("description")
+    if not amount_valid:
+        missing_fields.append("amount")
+    if not type_valid:
+        missing_fields.append("transaction type ('Income' or 'Expense')")
+
+    if missing_fields:
+        missing_str = ", ".join(missing_fields)
+        return f"❌ Cannot add transaction: missing {missing_str}. Please provide complete details and try again."
 
     category_id = get_category_id(extracted["category"], supabase)
     new_transaction = {
@@ -190,7 +178,7 @@ def add_transaction_from_llm(llm_response, user_id, supabase):
 
     user_reply = (
         f"✅ Added {extracted['transaction_type'].lower()} transaction: {extracted['description']}, "
-        f"{extracted['amount']} EGP, "
+        f"{extracted['amount']}, "
         f"date: {extracted['created_at']}"
     )
     if extracted["category"]:
@@ -201,25 +189,23 @@ def add_transaction_from_llm(llm_response, user_id, supabase):
         user_reply += f"\n💬 {extracted['feedback']}"
     return user_reply
 
-
 # 8. Example usage/test calls
 if __name__ == "__main__":
     user_id = "027051a8-3887-4150-9cfb-a51efb9146b5"
 
     test_inputs = [
-        "Received salary 8000 EGP today",
-        "Had dinner for 150 EGP last night",
-        "got 150 EGP",
+        "Received salary 8000 today",
+        "Had dinner for 150 last night",
+        "got 150",
         "Dinner today",
         "50 today",
+        "200 after 2 days"
     ]
 
     for user_input in test_inputs:
         print("User input:", user_input)
         llm_response = process_transaction_with_llm(user_input)
         print("LLM response:", llm_response)
-        result = add_transaction_from_llm(
-            llm_response, user_id=user_id, supabase=supabase
-        )
+        result = add_transaction_from_llm(llm_response, user_id=user_id, supabase=supabase)
         print("Result:", result)
         print("-" * 40)
